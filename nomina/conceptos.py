@@ -23,6 +23,7 @@ class Concepto:
     nombre: str
     valor: Decimal
     tipo: TipoConcepto
+    detalle: str = ""  # explicación corta para el desprendible, ej. "5 h x $ 30.000"
 
     def __post_init__(self):
         valor = redondear_pesos(validar_no_negativo(self.valor, self.nombre))
