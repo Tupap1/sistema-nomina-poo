@@ -1,9 +1,9 @@
 """Fixtures compartidas por las pruebas."""
 import pytest
 
-from nomina.calculadora import CalculadoraNomina
+from nomina.configuracion import crear_calculadora
 
 
 @pytest.fixture
 def calculadora():
-    return CalculadoraNomina()
+    return crear_calculadora()

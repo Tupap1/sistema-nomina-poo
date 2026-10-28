@@ -1,44 +1,42 @@
-"""Calcula la nómina de cada empleado.
+"""Calcula la nómina de cada empleado aplicando las reglas que le da la política.
 
-Versión 1: funciona, pero las reglas de cada tipo están amarradas aquí con isinstance.
+La calculadora no sabe qué tipos de empleado existen ni qué bonos hay. Solo sabe:
+1. pedirle al empleado sus devengos,
+2. aplicar en orden las reglas que le correspondan,
+3. validar que el neto no quede negativo.
 """
-from decimal import Decimal
+from operator import attrgetter
+from typing import Iterable, Protocol
 
-from nomina.conceptos import Concepto, TipoConcepto
-from nomina.empleados import (EmpleadoAsalariado, EmpleadoPorComision, EmpleadoPorHoras)
+from nomina.empleados.base import Empleado
 from nomina.errores import ContratoNoVigenteError, SalarioNetoNegativoError
 from nomina.liquidacion import Liquidacion
+from nomina.periodo import Periodo
+from nomina.reglas.base import Regla
 
-TARIFA_ARL = Decimal("0.00522")
+
+class FuenteDeReglas(Protocol):
+    """Lo único que la calculadora necesita de una política."""
+
+    def reglas_para(self, empleado: Empleado) -> list[Regla]: ...
 
 
 class CalculadoraNomina:
-    def liquidar(self, empleado, periodo) -> Liquidacion:
+    def __init__(self, politica: FuenteDeReglas):
+        self._politica = politica
+
+    def liquidar(self, empleado: Empleado, periodo: Periodo) -> Liquidacion:
         if not empleado.tiene_contrato_vigente(periodo):
             raise ContratoNoVigenteError(f"{empleado.nombre} no tiene contrato vigente en {periodo}.")
-        liq = Liquidacion(empleado, periodo, list(empleado.devengos(periodo)))
-        base = liq.salario_bruto
 
-        if isinstance(empleado, EmpleadoAsalariado) and empleado.tiene_mas_de_anios(5, periodo):
-            liq.agregar([Concepto("Bono por antigüedad", base * Decimal("0.10"), TipoConcepto.DEVENGO)])
-        if isinstance(empleado, EmpleadoPorComision) and empleado.ventas > 20_000_000:
-            liq.agregar([Concepto("Bono por ventas", empleado.ventas * Decimal("0.03"), TipoConcepto.DEVENGO)])
+        liquidacion = Liquidacion(empleado, periodo, list(empleado.devengos(periodo)))
+        # sorted es estable: dentro de la misma fase se respeta el orden en que se registraron.
+        for regla in sorted(self._politica.reglas_para(empleado), key=attrgetter("fase")):
+            liquidacion.agregar(regla.aplicar(empleado, liquidacion))
 
-        bruto = liq.salario_bruto
-        liq.agregar([
-            Concepto("Seguridad social y pensión", bruto * Decimal("0.04"), TipoConcepto.DEDUCCION),
-            Concepto("ARL", bruto * TARIFA_ARL, TipoConcepto.DEDUCCION),
-        ])
+        if liquidacion.salario_neto < 0:
+            raise SalarioNetoNegativoError(empleado.nombre, liquidacion.salario_neto)
+        return liquidacion
 
-        if isinstance(empleado, (EmpleadoAsalariado, EmpleadoPorComision)):
-            liq.agregar([Concepto("Bono de alimentación", 1_000_000, TipoConcepto.BENEFICIO)])
-        if (isinstance(empleado, EmpleadoPorHoras) and empleado.acepta_fondo_ahorro
-                and empleado.tiene_mas_de_anios(1, periodo)):
-            liq.agregar([Concepto("Fondo de ahorro", bruto * Decimal("0.02"), TipoConcepto.APORTE_AHORRO)])
-
-        if liq.salario_neto < 0:
-            raise SalarioNetoNegativoError(empleado.nombre, liq.salario_neto)
-        return liq
-
-    def liquidar_todos(self, empleados, periodo) -> list[Liquidacion]:
-        return [self.liquidar(e, periodo) for e in empleados]
+    def liquidar_todos(self, empleados: Iterable[Empleado], periodo: Periodo) -> list[Liquidacion]:
+        return [self.liquidar(empleado, periodo) for empleado in empleados]
