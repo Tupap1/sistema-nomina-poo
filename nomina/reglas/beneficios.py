@@ -51,4 +51,4 @@ class FondoDeAhorro(Regla):
         if not empleado.tiene_mas_de_anios(self._anios_minimos, liquidacion.periodo):
             return []
         return [Concepto(self.NOMBRE, liquidacion.salario_bruto * self._porcentaje, TipoConcepto.APORTE_AHORRO,
-                         "2 % del bruto, va a su fondo")]
+                         "2 % del bruto")]
