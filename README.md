@@ -71,10 +71,23 @@ classDiagram
     Empleado <|-- EmpleadoPorHoras
     Empleado <|-- EmpleadoPorComision
     Empleado <|-- EmpleadoTemporal
-    class EmpleadoAsalariado { +salario_mensual }
-    class EmpleadoPorHoras { +tarifa_hora +horas_trabajadas +acepta_fondo_ahorro }
-    class EmpleadoPorComision { +salario_base +porcentaje_comision +ventas }
-    class EmpleadoTemporal { +salario_mensual +fecha_fin_contrato }
+    class EmpleadoAsalariado {
+        +salario_mensual
+    }
+    class EmpleadoPorHoras {
+        +tarifa_hora
+        +horas_trabajadas
+        +acepta_fondo_ahorro
+    }
+    class EmpleadoPorComision {
+        +salario_base
+        +porcentaje_comision
+        +ventas
+    }
+    class EmpleadoTemporal {
+        +salario_mensual
+        +fecha_fin_contrato
+    }
 
     class Regla {
         <<abstract>>
@@ -104,7 +117,12 @@ classDiagram
         +salario_neto
         +total_a_recibir
     }
-    class Concepto { +nombre +valor +tipo +detalle }
+    class Concepto {
+        +nombre
+        +valor
+        +tipo
+        +detalle
+    }
 
     CalculadoraNomina --> PoliticaNomina : le pide las reglas
     PoliticaNomina o-- Regla
